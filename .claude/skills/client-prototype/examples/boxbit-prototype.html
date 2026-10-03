@@ -1,0 +1,1203 @@
+<title>BoxBit Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: guide rail on the left, a working phone on the right; the phone is its own night-gym world, the page around it follows the viewer's theme. */
+:root {
+  /* page (theme-aware) */
+  --page-bg: #EEF0F4;
+  --page-fg: #171B26;
+  --page-muted: #5A6273;
+  --page-line: #D5D9E2;
+  --page-card: #FFFFFF;
+  --page-accent: #C7332B;
+  --page-blue: #2D62C4;
+  --page-done: #1F8A5B;
+
+  /* app (deliberately single dark theme: a gym at 6am) */
+  --ink: #0D111B;
+  --ink-2: #151B29;
+  --ink-3: #1E2638;
+  --line: #2A3349;
+  --canvas: #EDEAE3;
+  --dim: #8E97AB;
+  --red: #E5483E;
+  --blue: #4A86F0;
+  --gold: #E9B949;
+  --green: #3DBE84;
+
+  --display: "Big Shoulders Display", "Oswald", "Arial Narrow", sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Emil Kowalski motion tokens */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #0A0D14; --page-fg: #E7E9EF; --page-muted: #949CAE; --page-line: #232A3A;
+    --page-card: #121724; --page-accent: #F0645A; --page-blue: #6F9DF5; --page-done: #45C78E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #0A0D14; --page-fg: #E7E9EF; --page-muted: #949CAE; --page-line: #232A3A;
+  --page-card: #121724; --page-accent: #F0645A; --page-blue: #6F9DF5; --page-done: #45C78E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--page-bg); color: var(--page-fg);
+  font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px;
+}
+
+.stage {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 48px; align-items: start;
+}
+
+/* ---------- guide rail (page) ---------- */
+.guide { min-width: 0; display: grid; gap: 28px; padding-top: 8px; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 {
+  font-family: var(--display); font-weight: 900; font-size: 56px; line-height: .9;
+  letter-spacing: .01em; margin: 0; text-transform: uppercase;
+}
+.brand h1 span { color: var(--page-accent); }
+.brand .tag {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--page-muted); border: 1px solid var(--page-line); padding: 2px 8px; border-radius: 4px;
+}
+.lede { margin: 0; max-width: 58ch; color: var(--page-muted); font-size: 16px; text-wrap: pretty; }
+.lede strong { color: var(--page-fg); font-weight: 600; }
+
+.guide h2 {
+  font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--page-muted); margin: 0 0 10px;
+}
+.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.role {
+  text-align: left; border: 1px solid var(--page-line); background: var(--page-card);
+  border-radius: 10px; padding: 12px; display: grid; gap: 2px;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease;
+}
+.role:active { transform: scale(0.97); }
+.role b { font-family: var(--display); font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.role small { color: var(--page-muted); font-size: 12.5px; line-height: 1.35; }
+.role[aria-pressed="true"] { border-color: var(--page-accent); box-shadow: inset 0 0 0 1px var(--page-accent); }
+.role[aria-pressed="true"] b { color: var(--page-accent); }
+
+.tour { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.tour li {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--page-line); font-size: 14.5px;
+}
+.tour .chk {
+  width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--page-line);
+  display: grid; place-items: center; transition: background-color 200ms ease, border-color 200ms ease;
+}
+.tour .chk svg { opacity: 0; transform: scale(.6); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
+.tour li.done .chk { background: var(--page-done); border-color: var(--page-done); }
+.tour li.done .chk svg { opacity: 1; transform: scale(1); }
+.tour li.done .t { color: var(--page-muted); }
+.tour .who { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--page-muted); }
+.progress-line { display: flex; justify-content: space-between; align-items: baseline; }
+.progress-line span { font-family: var(--mono); font-size: 12px; color: var(--page-muted); font-variant-numeric: tabular-nums; }
+
+.notes { display: grid; gap: 10px; font-size: 13.5px; color: var(--page-muted); max-width: 62ch; }
+.notes p { margin: 0; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.reset { font-size: 12.5px; color: var(--page-muted); text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
+
+/* ---------- device ---------- */
+.device {
+  width: 390px; height: 800px; border-radius: 54px; padding: 12px;
+  background: #05070B; box-shadow: 0 0 0 1px #2B3242, 0 30px 80px -20px rgba(5,8,15,.55);
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px);
+}
+.screen {
+  position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden;
+  background: var(--ink); color: var(--canvas); font-family: var(--body);
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; isolation: isolate;
+}
+.statusbar {
+  height: 50px; display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 30px 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.island { width: 112px; height: 32px; border-radius: 20px; background: #000; position: absolute; left: 50%; top: 11px; transform: translateX(-50%); }
+.sb-right { display: flex; gap: 6px; align-items: center; }
+
+.view { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; }
+.view::-webkit-scrollbar { display: none; }
+.pad { padding: 4px 18px 28px; display: grid; gap: 16px; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 18px 10px; position: sticky; top: 0; background: linear-gradient(var(--ink) 75%, transparent); z-index: 3; }
+.topbar h2 { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; margin: 0; letter-spacing: .01em; }
+.topbar .sub { font-size: 12px; color: var(--dim); font-family: var(--mono); letter-spacing: .04em; }
+.iconbtn {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ink-3); transition: transform 140ms var(--ease-out); position: relative;
+}
+.iconbtn:active { transform: scale(0.94); }
+.dot { position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px var(--ink-3); }
+
+/* tabbar: tabs are peers, so switching never slides (Emil: no animation on 100x/day actions) */
+.tabbar {
+  display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 10px 26px;
+  background: rgba(13,17,27,.92); border-top: 1px solid var(--line); backdrop-filter: blur(12px);
+}
+.tab { display: grid; justify-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; color: var(--dim); padding: 4px 0; letter-spacing: .02em; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--canvas); }
+.tab[aria-current="page"] .tab-ico { color: var(--red); }
+.tab:active .tab-ico { transform: scale(0.9); }
+.tab-ico { transition: transform 120ms var(--ease-out); display: grid; }
+
+/* common bits */
+.press { transition: transform 150ms var(--ease-out); }
+.press:active { transform: scale(0.97); }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-inline: -18px; padding-inline: 18px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: var(--ink-3); color: var(--dim); transition: background-color 150ms ease, color 150ms ease, transform 150ms var(--ease-out);
+}
+.chip:active { transform: scale(0.96); }
+.chip[aria-pressed="true"] { background: var(--canvas); color: var(--ink); }
+.label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.card { background: var(--ink-2); border-radius: 18px; border: 1px solid var(--line); }
+.btn {
+  height: 50px; border-radius: 14px; font-weight: 700; font-size: 15.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--red); color: #fff; transition: transform 150ms var(--ease-out), opacity 150ms ease; width: 100%;
+}
+.btn:active { transform: scale(0.97); }
+.btn.ghost { background: var(--ink-3); color: var(--canvas); }
+.btn.blue { background: var(--blue); }
+.btn.sm { height: 38px; font-size: 13.5px; border-radius: 11px; width: auto; padding: 0 14px; }
+.btn[disabled] { opacity: .4; pointer-events: none; }
+.vis {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--dim);
+  padding: 2px 7px 2px 5px; border-radius: 6px; background: var(--ink-3);
+}
+.vis svg { width: 12px; height: 12px; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-family: var(--display); font-weight: 800; font-size: 17px; color: #fff;
+}
+.row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.grow { flex: 1; min-width: 0; }
+.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--dim); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--ink-3); border-radius: 12px; padding: 3px; position: relative; }
+.seg button { height: 34px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--dim); position: relative; z-index: 1; transition: color 150ms ease; }
+.seg button[aria-pressed="true"] { color: var(--ink); }
+.seg .pill { position: absolute; top: 3px; bottom: 3px; left: 3px; border-radius: 9px; background: var(--canvas); transition: transform 220ms var(--ease-out); }
+
+/* feed */
+.composer { display: flex; align-items: center; gap: 10px; padding: 12px; }
+.composer .fake { flex: 1; text-align: left; color: var(--dim); font-size: 14.5px; padding: 10px 14px; border-radius: 12px; background: var(--ink-3); }
+.post { padding: 14px; display: grid; gap: 12px; }
+.post-head .name { font-weight: 700; font-size: 14.5px; }
+.post-head .meta { font-size: 12px; color: var(--dim); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.post-body { font-size: 14.5px; line-height: 1.5; text-wrap: pretty; }
+.statline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: 12px; overflow: hidden; }
+.statline div { background: var(--ink-3); padding: 9px 10px; display: grid; gap: 1px; }
+.statline b { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.statline span { font-size: 10.5px; color: var(--dim); }
+.milestone {
+  border-radius: 14px; padding: 14px; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center;
+  background: linear-gradient(135deg, rgba(233,185,73,.16), rgba(233,185,73,.04)); border: 1px solid rgba(233,185,73,.35);
+}
+.milestone .medal { width: 46px; height: 46px; border-radius: 50%; background: var(--gold); color: var(--ink); display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 20px; }
+.milestone b { font-family: var(--display); font-size: 21px; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; display: block; line-height: 1.1; }
+.clip { position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 16/10; max-width: 100%; background: #000; }
+.clip canvas { width: 100%; height: 100%; display: block; }
+.clip .play {
+  position: absolute; inset: 0; margin: auto; width: 58px; height: 58px; border-radius: 50%;
+  background: rgba(237,234,227,.92); color: var(--ink); display: grid; place-items: center;
+  transition: transform 150ms var(--ease-out), opacity 200ms ease;
+}
+.clip .play:active { transform: scale(0.94); }
+.clip.playing .play { opacity: 0; pointer-events: none; }
+.clip .bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--red); width: 0; }
+.clip .dur { position: absolute; right: 10px; bottom: 10px; font-family: var(--mono); font-size: 11px; background: rgba(0,0,0,.6); padding: 2px 6px; border-radius: 4px; }
+.actions { display: flex; gap: 6px; }
+.act {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--dim);
+  transition: transform 140ms var(--ease-out), color 150ms ease, background-color 150ms ease;
+}
+.act:active { transform: scale(0.95); }
+.act svg { width: 18px; height: 18px; }
+.act.on { color: var(--red); background: rgba(229,72,62,.12); }
+.act .glove { transition: transform 260ms cubic-bezier(.34,1.56,.64,1); }
+.act.on .glove { transform: rotate(-14deg) scale(1.08); }
+.locked {
+  display: grid; gap: 6px; justify-items: center; text-align: center; padding: 22px 16px;
+  background: repeating-linear-gradient(-45deg, var(--ink-2) 0 10px, var(--ink-3) 10px 20px);
+}
+.locked b { font-family: var(--display); font-size: 22px; font-weight: 800; text-transform: uppercase; }
+.enter { animation: rise 320ms var(--ease-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* train */
+.plan-hero { padding: 16px; display: grid; gap: 14px; background: linear-gradient(160deg, #24314F, var(--ink-2) 70%); }
+.plan-hero h3 { font-family: var(--display); font-size: 30px; line-height: 1; font-weight: 900; text-transform: uppercase; margin: 0; }
+.rounds { display: grid; gap: 6px; }
+.rnd { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.rnd .n { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--dim); }
+.rnd .tm { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+.devicechip { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(61,190,132,.22); }
+
+/* live session overlay */
+.session {
+  position: absolute; inset: 0; z-index: 30; background: var(--ink); display: grid; grid-template-rows: auto auto minmax(0,1fr) auto;
+  padding: 54px 18px 30px; gap: 12px;
+  transform: translateY(100%); transition: transform 420ms var(--ease-drawer);
+}
+.session.open { transform: translateY(0); }
+.session[data-phase="rest"] { background: #10182A; }
+.sess-top { display: flex; justify-content: space-between; align-items: center; }
+.phase {
+  font-family: var(--display); font-weight: 900; font-size: 18px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 8px; background: var(--red); color: #fff;
+}
+.session[data-phase="rest"] .phase { background: var(--blue); }
+.clock { font-family: var(--display); font-weight: 900; font-size: 112px; line-height: .85; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.clock-sub { text-align: center; font-size: 14px; color: var(--dim); margin-top: 6px; }
+.arcade { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #1A1430; min-height: 0; }
+.arcade canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; object-fit: cover; object-position: bottom; }
+.bubble {
+  position: absolute; left: 16px; top: 14px; max-width: 75%;
+  background: var(--canvas); color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 20px; text-transform: uppercase;
+  padding: 6px 12px; border-radius: 10px; line-height: 1.05;
+  transition: opacity 180ms ease, transform 180ms var(--ease-out); transform-origin: bottom left;
+}
+.bubble.swap { opacity: 0; transform: scale(0.96); }
+.bubble::after { content: ""; position: absolute; left: 24px; bottom: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: var(--canvas); }
+.livestats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.livestats div { background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.livestats b { display: block; font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.livestats span { font-size: 10.5px; color: var(--dim); }
+.sess-ctrl { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 8px; }
+.roundpips { display: flex; gap: 4px; justify-content: center; margin-top: 10px; }
+.roundpips i { width: 22px; height: 4px; border-radius: 2px; background: var(--line); }
+.roundpips i.done { background: var(--canvas); }
+.roundpips i.now { background: var(--red); }
+
+/* stats */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.tile { padding: 12px 14px; display: grid; gap: 2px; }
+.tile b { font-family: var(--display); font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.tile small { font-size: 12px; color: var(--dim); }
+.tile .delta { font-size: 11.5px; font-weight: 600; color: var(--green); }
+.chartcard { padding: 14px; display: grid; gap: 10px; }
+.chartcard > svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chartcard text { fill: var(--dim); font-family: var(--mono); font-size: 10px; }
+.note { padding: 14px; display: grid; grid-template-columns: auto 1fr; gap: 12px; font-size: 14px; }
+
+/* team */
+.fighter-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; text-align: left; width: 100%; }
+.fighter-row + .fighter-row { border-top: 1px solid var(--line); }
+.status { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+.s-good { background: rgba(61,190,132,.15); color: var(--green); }
+.s-warn { background: rgba(233,185,73,.16); color: var(--gold); }
+.s-bad { background: rgba(229,72,62,.15); color: var(--red); }
+.s-info { background: rgba(74,134,240,.15); color: var(--blue); }
+.meter { height: 6px; border-radius: 3px; background: var(--ink-3); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+
+/* events */
+.event { padding: 14px; display: grid; grid-template-columns: 58px minmax(0,1fr); gap: 14px; text-align: left; width: 100%; }
+.cal { border-radius: 12px; background: var(--ink-3); display: grid; justify-items: center; align-content: center; padding: 8px 0; height: 64px; }
+.cal small { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; color: var(--red); }
+.cal b { font-family: var(--display); font-size: 28px; font-weight: 900; line-height: 1; }
+.event h4 { margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+.event .meta { font-size: 12.5px; color: var(--dim); }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.match { padding: 12px; display: grid; gap: 10px; }
+.vs { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 8px; }
+.corner { padding: 10px; border-radius: 12px; display: grid; gap: 2px; min-width: 0; }
+.corner.red { background: rgba(229,72,62,.12); border: 1px solid rgba(229,72,62,.3); }
+.corner.blue { background: rgba(74,134,240,.12); border: 1px solid rgba(74,134,240,.3); text-align: right; }
+.corner b { font-size: 14px; }
+.corner span { font-size: 11.5px; color: var(--dim); }
+.vs > i { font-family: var(--display); font-weight: 900; font-style: normal; font-size: 18px; color: var(--dim); }
+.rules { display: grid; gap: 6px; font-size: 12.5px; }
+.rules div { display: flex; justify-content: space-between; gap: 8px; }
+.ok { color: var(--green); font-weight: 600; }
+
+/* profile */
+.fcard {
+  position: relative; border-radius: 22px; overflow: hidden; padding: 18px; display: grid; gap: 14px;
+  background: radial-gradient(120% 80% at 100% 0%, rgba(229,72,62,.35), transparent 60%), linear-gradient(170deg, #1B2336, #0F1420);
+  border: 1px solid var(--line);
+}
+.fcard .nick { font-family: var(--display); font-weight: 900; font-size: 44px; line-height: .9; text-transform: uppercase; }
+.fcard .real { font-size: 13px; color: var(--dim); }
+.record { display: flex; gap: 18px; }
+.record div { display: grid; }
+.record b { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.record span { font-size: 10.5px; color: var(--dim); font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; font-size: 12.5px; }
+.facts div { display: grid; }
+.facts span { color: var(--dim); font-size: 11px; }
+.serial { position: absolute; right: 16px; top: 18px; font-family: var(--mono); font-size: 10.5px; color: var(--dim); letter-spacing: .08em; }
+.setting { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 13px 14px; }
+.setting + .setting { border-top: 1px solid var(--line); }
+.setting b { font-size: 14.5px; font-weight: 600; display: block; }
+.setting small { font-size: 12px; color: var(--dim); }
+.select {
+  appearance: none; background: var(--ink-3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238E97AB' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+  color: var(--canvas); border: 0; border-radius: 9px; padding: 7px 28px 7px 10px; font: 600 13px var(--body);
+}
+.switch { width: 51px; height: 31px; border-radius: 16px; background: var(--ink-3); position: relative; transition: background-color 200ms ease; flex: none; }
+.switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; transition: transform 220ms var(--ease-out); box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.switch[aria-checked="true"] { background: var(--red); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.camp-banner { padding: 12px 14px; border-radius: 14px; background: rgba(229,72,62,.12); border: 1px solid rgba(229,72,62,.35); font-size: 13px; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.hidden-field { filter: blur(6px); user-select: none; }
+
+/* sheet (Vaul-style drawer) */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity 300ms ease; z-index: 40; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 88%;
+  background: var(--ink-2); border-radius: 26px 26px 0 0; border-top: 1px solid var(--line);
+  transform: translateY(100%); transition: transform 380ms var(--ease-drawer);
+  display: grid; grid-template-rows: auto minmax(0,1fr); touch-action: none;
+}
+.sheet.open { transform: translateY(0); }
+.sheet.dragging { transition: none; }
+.grabber { padding: 10px 0 6px; display: grid; place-items: center; cursor: grab; }
+.grabber i { width: 38px; height: 5px; border-radius: 3px; background: var(--line); }
+.sheet-body { overflow-y: auto; padding: 4px 18px 34px; display: grid; gap: 14px; align-content: start; touch-action: pan-y; }
+.sheet h3 { font-family: var(--display); font-weight: 900; font-size: 28px; text-transform: uppercase; margin: 0; line-height: 1; }
+textarea, .input {
+  width: 100%; background: var(--ink-3); color: var(--canvas); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; font: 16px/1.4 var(--body); resize: none;
+}
+textarea::placeholder, .input::placeholder { color: var(--dim); }
+.comment { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 10px; font-size: 14px; }
+.comment .avatar { width: 32px; height: 32px; font-size: 14px; }
+.comment b { font-size: 13px; }
+.checks { display: grid; gap: 8px; font-size: 14px; }
+.checks div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--ink-3); border-radius: 10px; }
+.steps { display: flex; gap: 6px; }
+.steps i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); transition: background-color 200ms ease; }
+.steps i.on { background: var(--red); }
+
+/* toast (Sonner-like: enters and exits from the same edge) */
+.toasts { position: absolute; left: 14px; right: 14px; top: 54px; z-index: 60; display: grid; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--canvas); color: var(--ink); border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
+}
+.toast.in { transform: translateY(-120%); opacity: 0; }
+.toast.out { transform: translateY(-120%); opacity: 0; transition-duration: 220ms; }
+.toast svg { flex: none; color: var(--green); }
+
+.empty { text-align: center; color: var(--dim); font-size: 14px; padding: 30px 10px; }
+.disc { padding: 14px; display: grid; gap: 12px; }
+.star { color: var(--dim); transition: transform 160ms var(--ease-out), color 150ms ease; }
+.star:active { transform: scale(0.9); }
+.star.on { color: var(--gold); }
+.kv { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+.kv div { background: var(--ink-3); border-radius: 10px; padding: 7px 9px; display: grid; }
+.kv b { font-family: var(--display); font-size: 19px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kv span { font-size: 10.5px; color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
+  .scrim, .toast { transition: opacity 150ms ease !important; }
+}
+
+@media (max-width: 920px) {
+  .stage { grid-template-columns: minmax(0,1fr); gap: 28px; }
+  .device { position: relative; top: 0; justify-self: center; }
+  .guide { order: 0; }
+}
+@media (max-width: 440px) {
+  body { padding-block: 12px; }
+  .device { width: 100%; height: 760px; padding: 0; border-radius: 34px; box-shadow: 0 0 0 1px #2B3242; }
+  .screen { border-radius: 34px; }
+  .brand h1 { font-size: 44px; }
+  .roles { grid-template-columns: minmax(0,1fr); }
+  .role { grid-template-columns: auto 1fr; align-items: baseline; gap: 10px; }
+}
+</style>
+
+<div class="stage">
+  <section class="guide" aria-label="About this prototype">
+    <div class="brand">
+      <h1>Box<span>Bit</span></h1>
+      <span class="tag">Clickable prototype · v0.1</span>
+    </div>
+    <p class="lede">A positive, team-first home for the boxing community. <strong>Fighters</strong> log training and milestones, <strong>coaches</strong> run their team, <strong>promoters</strong> find talent. Every piece of data has its own privacy setting, because nobody needs to know what you're cooking until fight night.</p>
+
+    <div>
+      <h2>View the app as</h2>
+      <div class="roles" role="group" aria-label="Role">
+        <button class="role" data-role="fighter" aria-pressed="true"><b>Fighter</b><small>Marcus "Lil Smoke" Reyes, 60 kg</small></button>
+        <button class="role" data-role="coach" aria-pressed="false"><b>Coach</b><small>Coach Dre, Lakeshore BC</small></button>
+        <button class="role" data-role="promoter" aria-pressed="false"><b>Promoter</b><small>Tanya Ruiz, Eastbay Promotions</small></button>
+      </div>
+    </div>
+
+    <div>
+      <div class="progress-line"><h2>Try this</h2><span id="tourCount">0 / 8</span></div>
+      <ul class="tour" id="tour"></ul>
+    </div>
+
+    <div class="notes">
+      <h2>What's real and what's simulated</h2>
+      <p>Everything here runs in your browser with sample people, gyms and events. Wearable numbers are simulated the way a Ganance Heir sensor would report them (steps, cadence, distance, active calories) through Apple Health or Health Connect. Event matching shows how a Konquer-style integration with USA Boxing rules could look.</p>
+      <div class="legend"><span><i style="background:var(--page-accent)"></i>Red corner</span><span><i style="background:var(--page-blue)"></i>Blue corner</span><span><i style="background:#E9B949"></i>Milestones</span></div>
+      <button class="reset" id="resetBtn">Reset the demo</button>
+    </div>
+  </section>
+
+  <div class="device" aria-label="BoxBit app on a phone">
+    <div class="screen" id="screen">
+      <div class="statusbar"><span id="clockNow">6:12</span><div class="island"></div><div class="sb-right">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+        <svg width="26" height="12" viewBox="0 0 26 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.6" fill="currentColor"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+      </div></div>
+      <main class="view" id="view" tabindex="-1"></main>
+      <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
+
+      <section class="session" id="session" aria-label="Live training session" data-phase="work"></section>
+      <div class="scrim" id="scrim"></div>
+      <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Details">
+        <div class="grabber" id="grabber"><i></i></div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </section>
+      <div class="toasts" id="toasts" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('boxbit:' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('boxbit:' + k, JSON.stringify(v)); } catch {} }
+  };
+
+  /* ---------------- icons ---------------- */
+  const I = {
+    feed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"/></svg>',
+    train: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9.5 2.5h5M12 2.5V5"/></svg>',
+    stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+    events: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    me: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+    team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.4.8 2.4 2.5 3 5.2"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    star: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>',
+    starO: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>',
+    glove: '<svg class="glove" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 21h9v-3.5c2-1.3 3.5-3.6 3.5-6.5V8a3 3 0 0 0-3-3H10a4 4 0 0 0-4 4v1.5L4.8 11.6A2 2 0 0 0 4.5 14c.6 1.5 1.5 2.7 2.5 3.5z"/><path d="M9.5 10.5h6"/></svg>',
+    gloveFill: '<svg class="glove" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 21h9v-3.5c2-1.3 3.5-3.6 3.5-6.5V8a3 3 0 0 0-3-3H10a4 4 0 0 0-4 4v1.5L4.8 11.6A2 2 0 0 0 4.5 14c.6 1.5 1.5 2.7 2.5 3.5z"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg>',
+    bell: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>',
+    plus: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    play: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
+    pause: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+    checkG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>',
+    people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="3.5"/><path d="M3 20c1-3.5 3.3-5 6-5s5 1.5 6 5M16 6a3 3 0 0 1 0 6M18 15c1.5.7 2.5 2.3 3 5"/></svg>',
+    whistle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="9" cy="14" r="5"/><path d="M12 10l9-4v5l-6 2"/></svg>',
+    watch: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="6"/><path d="M9 6l1-3.5h4L15 6M9 18l1 3.5h4L15 18M12 9.5V12l1.5 1.2"/></svg>',
+    heart: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.5-7.5 10-7.5 10z"/></svg>',
+    flame: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2C5.5 10 10 8.5 10 3c3 1.5 7.5 5.5 7.5 11 0 4-2.6 7-5.5 7z"/><path d="M12 21c-1.6 0-2.8-1.2-2.8-2.9 0-2 1.6-2.8 2.3-4.6 1.6 1 3.3 2.6 3.3 4.6 0 1.7-1.2 2.9-2.8 2.9z"/></svg>'
+  };
+  const visIcon = { team: I.people, coaches: I.whistle, public: I.globe, camp: I.lock };
+  const visName = { team: 'Team', coaches: 'Coaches only', public: 'Public', camp: 'Fight camp' };
+
+  /* ---------------- sample data ---------------- */
+  const people = {
+    marcus: { name: 'Marcus Reyes', nick: 'Lil Smoke', ini: 'MR', color: '#C7332B', wc: '60 kg', role: 'Fighter' },
+    aaliyah: { name: 'Aaliyah Brooks', nick: 'Quiet Storm', ini: 'AB', color: '#7A4FD0', wc: '54 kg', role: 'Fighter' },
+    tomas: { name: 'Tomás Vega', nick: 'El Tren', ini: 'TV', color: '#2D8A6A', wc: '71 kg', role: 'Fighter' },
+    jaylen: { name: 'Jaylen Carter', nick: 'J-Hook', ini: 'JC', color: '#B5702A', wc: '67 kg', role: 'Fighter' },
+    sofia: { name: 'Sofia Nguyen', nick: 'Pocket Rocket', ini: 'SN', color: '#2D62C4', wc: '50 kg', role: 'Fighter' },
+    dre: { name: 'Coach Dre', nick: '', ini: 'CD', color: '#3A4258', wc: '', role: 'Head coach' },
+    tanya: { name: 'Tanya Ruiz', nick: '', ini: 'TR', color: '#8C6A1F', wc: '', role: 'Promoter' }
+  };
+  const roleUser = { fighter: 'marcus', coach: 'dre', promoter: 'tanya' };
+
+  const seedPosts = () => ([
+    { id: 'p1', who: 'aaliyah', when: '18m', vis: 'team', type: 'milestone', title: '100 sparring rounds', text: 'Hit 100 rounds of sparring this year. Thank you Coach Dre for keeping me honest on the jab. 🥊', props: 23, mine: false, comments: [{ who: 'dre', text: 'Earned every one of them. Next stop, regionals.' }] },
+    { id: 'p2', who: 'marcus', when: '1h', vis: 'team', type: 'workout', text: 'Early one. 6 rounds on the bag, 3 on the mitts, 4 miles roadwork before school.', stats: [['13', 'rounds'], ['4.0', 'miles'], ['14.2k', 'steps'], ['612', 'kcal']], props: 11, mine: false, comments: [] },
+    { id: 'p3', who: 'tomas', when: '3h', vis: 'public', type: 'video', text: 'Working the counter left hook off the slip. Feeling sharp for the Pacific Regional Open.', dur: '0:24', props: 41, mine: false, comments: [{ who: 'jaylen', text: 'That hook is nasty 😤' }, { who: 'tanya', text: 'Love the footwork. Is he open for a December card?' }] },
+    { id: 'p4', who: 'dre', when: '5h', vis: 'team', type: 'shout', text: 'Shout out to Sofia for showing up at 5:45am all week. Consistency beats talent when talent doesn\'t show up. Team run Saturday 7am at the lake.', props: 30, mine: false, comments: [] },
+    { id: 'p5', who: 'jaylen', when: '1d', vis: 'camp', type: 'workout', text: 'Camp week 4.', stats: [['18', 'rounds'], ['6.2', 'miles'], ['16k', 'steps'], ['890', 'kcal']], props: 9, mine: false, comments: [] },
+    { id: 'p6', who: 'sofia', when: '1d', vis: 'public', type: 'result', text: 'Unanimous decision at the Eastbay Amateur Showcase. 3–0 this season. Back to work Monday.', props: 57, mine: false, comments: [{ who: 'aaliyah', text: 'POCKET ROCKET 🚀' }] }
+  ]);
+
+  const team = [
+    { id: 'marcus', status: ['Trained today', 's-good'], comp: 92, weight: '60.8 / 60', note: 'Making weight, 0.8 kg to go' },
+    { id: 'aaliyah', status: ['Trained today', 's-good'], comp: 97, weight: '53.6 / 54', note: 'On weight' },
+    { id: 'tomas', status: ['Bout in 12 days', 's-info'], comp: 88, weight: '72.4 / 71', note: '1.4 kg to cut, monitor hydration' },
+    { id: 'jaylen', status: ['Missed 2 sessions', 's-bad'], comp: 61, weight: '67.9 / 67', note: 'No check-in since Tuesday' },
+    { id: 'sofia', status: ['Rest day', 's-warn'], comp: 95, weight: '49.7 / 50', note: 'Recovery after Saturday' }
+  ];
+
+  const events = [
+    { id: 'e1', mon: 'OCT', day: '18', name: 'Eastbay Amateur Showcase', where: 'Oakland, CA · Single-day show', reg: 64, cap: 80, deadline: 'Reg. closes Oct 14', sanctioned: true, fee: '$35' },
+    { id: 'e2', mon: 'NOV', day: '08', name: 'Pacific Regional Open', where: 'Sacramento, CA · 3-day tournament', reg: 212, cap: 300, deadline: 'Reg. closes Oct 27', sanctioned: true, fee: '$60' },
+    { id: 'e3', mon: 'NOV', day: '22', name: 'Lakeshore BC Fight Night', where: 'Oakland, CA · Club show', reg: 18, cap: 30, deadline: 'Reg. closes Nov 15', sanctioned: true, fee: '$25' }
+  ];
+
+  const prospects = [
+    { id: 'tomas', gym: 'Lakeshore BC', rec: '22–4', ko: 7, age: 19, region: 'Bay Area', wc: '71 kg', camp: false, tags: ['Southpaw', 'Pressure'] },
+    { id: 'sofia', gym: 'Lakeshore BC', rec: '15–2', ko: 3, age: 18, region: 'Bay Area', wc: '50 kg', camp: false, tags: ['Orthodox', 'Counter-puncher'] },
+    { id: 'jaylen', gym: 'Lakeshore BC', rec: '9–3', ko: 5, age: 20, region: 'Bay Area', wc: '67 kg', camp: true, tags: ['Orthodox'] },
+    { id: 'aaliyah', gym: 'Lakeshore BC', rec: '18–5', ko: 2, age: 17, region: 'Bay Area', wc: '54 kg', camp: false, tags: ['Switch', 'Volume'] },
+    { id: 'marcus', gym: 'Lakeshore BC', rec: '14–3', ko: 4, age: 17, region: 'Bay Area', wc: '60 kg', camp: false, tags: ['Orthodox', 'Boxer-puncher'] }
+  ];
+
+  /* ---------------- state ---------------- */
+  const defaults = () => ({
+    role: 'fighter', tab: 'feed', feedFilter: 'all', posts: seedPosts(),
+    privacy: { training: 'team', stats: 'coaches', weight: 'coaches', video: 'public' },
+    fightCamp: false, viewAs: 'me', shortlist: ['tomas'], discFilter: 'All', statsRange: 'week',
+    registered: [], tour: {}
+  });
+  let S = Object.assign(defaults(), store.get('state', {}));
+  const save = () => store.set('state', { role: S.role, tour: S.tour, privacy: S.privacy, fightCamp: S.fightCamp, shortlist: S.shortlist, registered: S.registered });
+
+  const tabsFor = {
+    fighter: [['feed', 'Corner', I.feed], ['train', 'Train', I.train], ['stats', 'Stats', I.stats], ['events', 'Events', I.events], ['me', 'Profile', I.me]],
+    coach: [['feed', 'Corner', I.feed], ['team', 'Team', I.team], ['train', 'Plans', I.train], ['events', 'Events', I.events], ['me', 'Gym', I.me]],
+    promoter: [['feed', 'Corner', I.feed], ['discover', 'Discover', I.search], ['events', 'Events', I.events], ['shortlist', 'Shortlist', I.starO], ['me', 'Profile', I.me]]
+  };
+
+  /* ---------------- tour ---------------- */
+  const tourItems = [
+    ['props', 'Give someone props on a post', 'any'],
+    ['post', 'Post an update and pick who sees it', 'any'],
+    ['session', 'Start a training session', 'fighter'],
+    ['camp', 'Turn on Fight Camp mode', 'fighter'],
+    ['viewas', 'Preview your profile as a promoter', 'fighter'],
+    ['register', 'Register for a show and review a match', 'fighter'],
+    ['assign', 'Assign a workout to the team', 'coach'],
+    ['discover', 'Shortlist a fighter', 'promoter']
+  ];
+  function renderTour() {
+    const ul = $('#tour');
+    ul.innerHTML = tourItems.map(([k, t, who]) => `<li class="${S.tour[k] ? 'done' : ''}"><span class="chk">${I.check}</span><span class="t">${t}</span><span class="who">${who === 'any' ? '' : who}</span></li>`).join('');
+    $('#tourCount').textContent = `${Object.keys(S.tour).filter(k => S.tour[k]).length} / ${tourItems.length}`;
+  }
+  function tick(k) { if (!S.tour[k]) { S.tour[k] = true; save(); renderTour(); } }
+
+  /* ---------------- toast ---------------- */
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast in';
+    el.innerHTML = I.checkG + `<span>${msg}</span>`;
+    $('#toasts').prepend(el);
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('in')));
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 240); }, 2600);
+  }
+
+  /* ---------------- helpers ---------------- */
+  const av = (id, size) => { const p = people[id]; return `<span class="avatar" style="background:${p.color}${size ? `;width:${size}px;height:${size}px;font-size:${Math.round(size * .42)}px` : ''}">${p.ini}</span>`; };
+  const visBadge = v => `<span class="vis">${visIcon[v]}${visName[v]}</span>`;
+  const topbar = (title, sub, right = '') => `<header class="topbar"><div><div class="sub">${sub}</div><h2>${title}</h2></div><div class="row">${right}</div></header>`;
+
+  /* ---------------- views ---------------- */
+  function canSee(post) {
+    if (S.role === 'promoter') return post.vis === 'public';
+    if (post.vis === 'coaches') return S.role === 'coach' || post.who === roleUser[S.role];
+    return true; // fighter + coach are on the team; camp posts are team-visible
+  }
+
+  function viewFeed() {
+    const me = roleUser[S.role];
+    const filters = S.role === 'promoter' ? ['Public'] : ['All', 'Team', 'Milestones', 'Videos'];
+    let posts = S.posts.filter(canSee);
+    const f = S.feedFilter;
+    if (f === 'Team') posts = posts.filter(p => p.vis !== 'public');
+    if (f === 'Milestones') posts = posts.filter(p => p.type === 'milestone' || p.type === 'result');
+    if (f === 'Videos') posts = posts.filter(p => p.type === 'video');
+    const lockedNote = S.role === 'promoter' ? `<article class="card locked"><span style="width:22px;color:var(--red)">${I.lock}</span><b>Jaylen is in fight camp</b><span class="muted" style="font-size:13px">Training is hidden until fight night, Nov 8. You can still view his record and request contact through his coach.</span></article>` : '';
+    return `
+      ${topbar('Corner', S.role === 'promoter' ? 'PUBLIC FEED' : 'LAKESHORE BOXING CLUB', `<button class="iconbtn" data-act="notifs" aria-label="Notifications">${I.bell}<span class="dot"></span></button>`)}
+      <div class="pad">
+        <div class="chips" role="group" aria-label="Filter">${filters.map(x => `<button class="chip" data-act="filter" data-v="${x}" aria-pressed="${(f === x || (f === 'all' && x === filters[0]))}">${x}</button>`).join('')}</div>
+        ${S.role !== 'promoter' ? `<div class="card composer">${av(me)}<button class="fake press" data-act="compose">Share today's work…</button></div>` : ''}
+        ${lockedNote}
+        ${posts.length ? posts.map(postHTML).join('') : '<div class="empty">Nothing here yet.</div>'}
+      </div>`;
+  }
+
+  function postHTML(p, i) {
+    const who = people[p.who];
+    let body = '';
+    if (p.type === 'workout') body = `<div class="statline">${p.stats.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>`;
+    if (p.type === 'milestone') body = `<div class="milestone"><span class="medal">100</span><div><b>${p.title}</b><span class="muted" style="font-size:12.5px">Milestone · auto-detected from logged sessions</span></div></div>`;
+    if (p.type === 'video') body = `<div class="clip" data-clip="${p.id}"><canvas width="640" height="400"></canvas><button class="play" data-act="play" data-id="${p.id}" aria-label="Play clip">${I.play}</button><span class="dur">${p.dur}</span><span class="bar"></span></div>`;
+    if (p.type === 'result') body = `<div class="vs"><div class="corner red"><b>${who.name}</b><span>Lakeshore BC</span></div><i>W</i><div class="corner blue"><b>K. Daniels</b><span>Richmond PAL</span></div></div>`;
+    return `<article class="card post ${i < 4 && !viewFeed.rendered ? 'enter' : ''}" style="animation-delay:${i * 50}ms">
+      <div class="row post-head">${av(p.who)}<div class="grow"><div class="name trunc">${who.name}${who.nick ? ` <span class="muted" style="font-weight:500">“${who.nick}”</span>` : ''}</div><div class="meta">${p.when} · ${visBadge(p.vis)}</div></div></div>
+      <div class="post-body">${p.text}</div>
+      ${body}
+      <div class="actions">
+        <button class="act ${p.mine ? 'on' : ''}" data-act="props" data-id="${p.id}" aria-pressed="${p.mine}">${p.mine ? I.gloveFill : I.glove}<span class="num">${p.props + (p.mine ? 1 : 0)}</span> props</button>
+        <button class="act" data-act="comments" data-id="${p.id}">${I.chat}<span class="num">${p.comments.length}</span></button>
+        <button class="act" data-act="share" data-id="${p.id}" style="margin-left:auto">${I.share}</button>
+      </div>
+    </article>`;
+  }
+
+  const plan = [
+    ['Jump rope', 'Footwork rhythm, double-unders last 30s'],
+    ['Shadowbox', 'Jab-cross-slip, move off the line'],
+    ['Heavy bag', '1-2-3 then pivot out'],
+    ['Heavy bag', 'Body-head combos, 10 power shots / 30s'],
+    ['Mitts w/ Dre', 'Counter the jab, roll under the hook'],
+    ['Speed bag', 'Relax the shoulders, stay on rhythm']
+  ];
+
+  function viewTrain() {
+    if (S.role === 'coach') return viewPlans();
+    return `
+      ${topbar('Train', 'THU · OCT 3')}
+      <div class="pad">
+        <article class="card plan-hero">
+          <div class="row"><span class="label grow">Today · from Coach Dre</span><span class="devicechip"><span class="live-dot"></span>Heir connected</span></div>
+          <h3>Bag &amp; Mitts<br>6 × 3:00</h3>
+          <div class="row" style="gap:16px;font-size:13px" ><span>1:00 rest</span><span class="muted">·</span><span>~24 min</span><span class="muted">·</span><span>Visible to: ${visName[S.fightCamp ? 'camp' : S.privacy.training]}</span></div>
+          <button class="btn" data-act="startSession">${I.play} Start session</button>
+        </article>
+        <section class="card" style="padding:4px 14px 8px">
+          <div class="rounds">${plan.map((r, i) => `<div class="rnd"><span class="n">${String(i + 1).padStart(2, '0')}</span><div class="grow"><div style="font-weight:600">${r[0]}</div><div class="muted" style="font-size:12.5px">${r[1]}</div></div><span class="tm">3:00</span></div>`).join('')}</div>
+        </section>
+        <section class="card note"><span style="color:var(--gold)">${I.watch}</span><div><b>Roadwork already counted.</b> <span class="muted">Your Heir logged 4.0 mi this morning at 168 spm. It's on your log; you don't need to enter it.</span></div></section>
+      </div>`;
+  }
+
+  function viewPlans() {
+    return `
+      ${topbar('Plans', 'SESSION BUILDER', `<button class="iconbtn" data-act="assign" aria-label="New plan">${I.plus}</button>`)}
+      <div class="pad">
+        <article class="card plan-hero">
+          <span class="label">Assigned for today</span>
+          <h3>Bag &amp; Mitts · 6 × 3:00</h3>
+          <div class="row"><div class="grow"><div class="meter"><i style="width:60%"></i></div></div><span class="num" style="font-size:13px">3 of 5 done</span></div>
+          <button class="btn ghost" data-act="assign">Build a new plan</button>
+        </article>
+        <span class="label">Templates</span>
+        ${[['Fight-week sharpening', '4 × 2:00 · light mitts · weight check'], ['Conditioning Saturday', 'Team run + 8 × 3:00 circuits'], ['Beginner fundamentals', 'Stance, jab, guard · 5 × 2:00']].map(t => `<button class="card setting press" data-act="assign" style="text-align:left;width:100%"><div><b>${t[0]}</b><small>${t[1]}</small></div><span class="muted">›</span></button>`).join('')}
+      </div>`;
+  }
+
+  /* charts */
+  function barChart(vals, labels, hi) {
+    const W = 320, H = 150, pl = 22, pb = 20, pt = 8, max = 8;
+    const bw = (W - pl) / vals.length;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rounds per day">`;
+    for (let g = 0; g <= max; g += 4) { const y = pt + (H - pb - pt) * (1 - g / max); s += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="#2A3349" stroke-dasharray="${g ? '2 4' : ''}"/><text x="0" y="${y + 3}">${g}</text>`; }
+    vals.forEach((v, i) => {
+      const h = (H - pb - pt) * v / max, x = pl + i * bw + bw * .2, y = H - pb - h;
+      s += `<rect x="${x}" y="${y}" width="${bw * .6}" height="${h}" rx="4" fill="${i === hi ? '#E5483E' : '#3A4560'}"/>`;
+      if (i === hi) s += `<text x="${x + bw * .3}" y="${y - 5}" text-anchor="middle" style="fill:#EDEAE3;font-weight:500">${v}</text>`;
+      s += `<text x="${x + bw * .3}" y="${H - 5}" text-anchor="middle">${labels[i]}</text>`;
+    });
+    return s + '</svg>';
+  }
+  function weightChart() {
+    const pts = [63.1, 62.6, 62.4, 61.9, 61.6, 61.2, 60.8], limit = 60;
+    const W = 320, H = 140, pl = 30, pr = 8, pt = 10, pb = 20, lo = 59.5, hi = 63.5;
+    const x = i => pl + i * (W - pl - pr) / (pts.length - 1), y = v => pt + (H - pt - pb) * (hi - v) / (hi - lo);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight trend toward 60 kg limit">`;
+    [60, 61, 62, 63].forEach(g => s += `<line x1="${pl}" x2="${W - pr}" y1="${y(g)}" y2="${y(g)}" stroke="#2A3349" stroke-dasharray="2 4"/><text x="0" y="${y(g) + 3}">${g}</text>`);
+    s += `<line x1="${pl}" x2="${W - pr}" y1="${y(limit)}" y2="${y(limit)}" stroke="#E9B949" stroke-width="1.5"/><text x="${W - pr}" y="${y(limit) - 5}" text-anchor="end" style="fill:#E9B949">60 kg limit</text>`;
+    const d = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i)},${y(v)}`).join(' ');
+    s += `<path d="${d} L${x(pts.length - 1)},${H - pb} L${x(0)},${H - pb} Z" fill="rgba(74,134,240,.14)"/><path d="${d}" fill="none" stroke="#4A86F0" stroke-width="2.2" stroke-linejoin="round"/>`;
+    s += `<circle cx="${x(pts.length - 1)}" cy="${y(pts[pts.length - 1])}" r="4.5" fill="#4A86F0" stroke="#151B29" stroke-width="2"/>`;
+    ['wk 1', 'wk 3', 'wk 5', 'today'].forEach((l, i) => { const idx = [0, 2, 4, 6][i]; s += `<text x="${x(idx)}" y="${H - 4}" text-anchor="${i === 3 ? 'end' : 'middle'}">${l}</text>`; });
+    return s + '</svg>';
+  }
+
+  function viewStats() {
+    const week = S.statsRange === 'week';
+    const vals = week ? [5, 7, 0, 6, 8, 4, 3] : [22, 28, 25, 31];
+    const labels = week ? ['F', 'S', 'S', 'M', 'T', 'W', 'T'] : ['Sep 9', 'Sep 16', 'Sep 23', 'Sep 30'];
+    const chart = week ? barChart(vals, labels, 6) : (() => { const W = 320, H = 150; const s = vals.map(v => v / 4); return barChart(s.map(v => +v.toFixed(1)), labels, 3).replace('Rounds per day', 'Avg rounds per day by week'); })();
+    return `
+      ${topbar('Stats', 'MARCUS REYES · 60 KG')}
+      <div class="pad">
+        <div class="seg" role="group" aria-label="Range" data-seg="statsRange"><span class="pill" style="width:calc(50% - 3px);transform:translateX(${week ? 0 : 100}%)"></span><button data-act="range" data-v="week" aria-pressed="${week}">This week</button><button data-act="range" data-v="month" aria-pressed="${!week}">Last 4 weeks</button></div>
+        <div class="tiles">
+          <div class="card tile"><small>Rounds</small><b>${week ? 33 : 106}</b><span class="delta">+12% vs last ${week ? 'week' : 'month'}</span></div>
+          <div class="card tile"><small>Roadwork</small><b>${week ? '11.4' : '43.8'}<span style="font-size:18px"> mi</span></b><span class="delta">Heir · auto-logged</span></div>
+          <div class="card tile"><small>Avg daily steps</small><b>${week ? '12,480' : '11,920'}</b><span class="delta">Heir · auto-logged</span></div>
+          <div class="card tile"><small>Streak</small><b>9<span style="font-size:18px"> days</span></b><span class="delta" style="color:var(--gold)">Best: 14</span></div>
+        </div>
+        <section class="card chartcard"><div class="row"><span class="label grow">${week ? 'Rounds per day' : 'Avg rounds per day, by week'}</span><span class="vis">${visIcon[S.privacy.stats]}${visName[S.privacy.stats]}</span></div>${chart}</section>
+        <section class="card chartcard"><div class="row"><span class="label grow">Weight · 6 weeks</span><span class="vis">${visIcon[S.privacy.weight]}${visName[S.privacy.weight]}</span></div>${weightChart()}<div class="muted" style="font-size:12.5px">0.8 kg to go before the Pacific Regional Open weigh-in (Nov 8). On pace at 0.4 kg/week.</div></section>
+        <section class="card note">${av('dre', 34)}<div><b>Coach Dre</b> <span class="muted">· note on this week</span><div style="margin-top:4px">Volume is right where I want it. Wednesday was light on purpose. Keep the roadwork easy; we'll sharpen next week.</div></div></section>
+      </div>`;
+  }
+
+  function viewTeam() {
+    return `
+      ${topbar('Team', '5 FIGHTERS · LAKESHORE BC', `<button class="iconbtn" data-act="assign" aria-label="Assign workout">${I.plus}</button>`)}
+      <div class="pad">
+        <div class="tiles">
+          <div class="card tile"><small>Trained today</small><b>3<span style="font-size:18px"> / 5</span></b><span class="delta">Plan: Bag &amp; Mitts</span></div>
+          <div class="card tile"><small>Need attention</small><b style="color:var(--red)">2</b><span class="delta" style="color:var(--dim)">Weight, missed sessions</span></div>
+        </div>
+        <section class="card">
+          ${team.map(t => { const p = people[t.id]; return `<button class="fighter-row press" data-act="fighter" data-id="${t.id}">${av(t.id)}<div style="min-width:0"><div style="font-weight:700" class="trunc">${p.name}</div><div class="muted num" style="font-size:12px">${p.wc} · ${t.comp}% plan compliance</div></div><span class="status ${t.status[1]}">${t.status[0]}</span></button>`; }).join('')}
+        </section>
+        <button class="btn" data-act="assign">Assign a workout</button>
+      </div>`;
+  }
+
+  function viewEvents() {
+    const promoter = S.role === 'promoter';
+    return `
+      ${topbar('Events', 'SANCTIONED · NORCAL', promoter ? `<button class="iconbtn" data-act="createEvent" aria-label="Create event">${I.plus}</button>` : '')}
+      <div class="pad">
+        <div class="chips"><button class="chip" aria-pressed="true">Upcoming</button><button class="chip" aria-pressed="false">Near me</button><button class="chip" aria-pressed="false">Tournaments</button><button class="chip" aria-pressed="false">Results</button></div>
+        ${events.map(e => `<button class="card event press" data-act="event" data-id="${e.id}"><div class="cal"><small>${e.mon}</small><b>${e.day}</b></div><div style="min-width:0"><h4>${e.name}</h4><div class="meta">${e.where}</div><div class="badges"><span class="status s-good">USA Boxing sanctioned</span>${S.registered.includes(e.id) ? '<span class="status s-info">Registered</span>' : `<span class="status s-warn">${e.deadline}</span>`}</div><div style="margin-top:10px" class="row"><div class="grow"><div class="meter"><i style="width:${Math.round(e.reg / e.cap * 100)}%;background:var(--blue)"></i></div></div><span class="muted num" style="font-size:12px">${e.reg}/${e.cap} boxers</span></div></div></button>`).join('')}
+        <p class="muted" style="font-size:12px;margin:0">Registration and bout sheets could sync with Konquer, which USA Boxing events already use. Shown here as a proposed integration.</p>
+      </div>`;
+  }
+
+  function viewProfile() {
+    if (S.role === 'coach') return viewGym();
+    if (S.role === 'promoter') return viewPromoterProfile();
+    const v = S.viewAs;
+    const audience = v === 'me' ? 'me' : v; // me | team | public
+    const canView = key => {
+      if (audience === 'me') return true;
+      if (S.fightCamp && (key === 'training' || key === 'stats')) return false;
+      const lvl = S.privacy[key];
+      if (audience === 'team') return lvl === 'team' || lvl === 'public';
+      return lvl === 'public';
+    };
+    const field = (key, html) => canView(key) ? html : `<span class="hidden-field" aria-hidden="true">${html}</span>`;
+    const opt = (key) => ['public', 'team', 'coaches'].map(o => `<option value="${o}" ${S.privacy[key] === o ? 'selected' : ''}>${visName[o]}</option>`).join('');
+    return `
+      ${topbar('Profile', '@lilsmoke')}
+      <div class="pad">
+        <div class="seg" role="group" aria-label="Preview as" data-seg="viewAs"><span class="pill" style="width:calc(33.33% - 2px);transform:translateX(${['me', 'team', 'public'].indexOf(v) * 100}%)"></span><button data-act="viewas" data-v="me" aria-pressed="${v === 'me'}">Me</button><button data-act="viewas" data-v="team" aria-pressed="${v === 'team'}">My team</button><button data-act="viewas" data-v="public" aria-pressed="${v === 'public'}">Promoter</button></div>
+        ${v !== 'me' ? `<div class="muted" style="font-size:12.5px;margin-top:-6px">This is exactly what ${v === 'team' ? 'your teammates' : 'a promoter or the public'} can see. Blurred items are hidden from them.</div>` : ''}
+        <article class="fcard">
+          <span class="serial">NO. 0417</span>
+          <div class="row">${av('marcus', 64)}<div><div class="nick">Lil Smoke</div><div class="real">Marcus Reyes · Lakeshore BC · Oakland</div></div></div>
+          <div class="record"><div><b>14</b><span>Wins</span></div><div><b>3</b><span>Losses</span></div><div><b>4</b><span>RSC</span></div><div><b style="color:var(--gold)">2</b><span>Titles</span></div></div>
+          <div class="facts"><div><span>Division</span>60 kg · Youth</div><div><span>Stance</span>Orthodox</div><div><span>Age</span>17</div></div>
+          ${S.fightCamp && v !== 'me' ? `<div class="camp-banner"><span style="width:20px;color:var(--red)">${I.lock}</span><div><b>In fight camp</b><br><span class="muted">Training resumes being visible after Nov 8.</span></div></div>` : ''}
+          <div class="kv">
+            <div>${field('training', '<b>33</b>')}<span>Rounds this wk</span></div>
+            <div>${field('stats', '<b>12.5k</b>')}<span>Avg steps</span></div>
+            <div>${field('weight', '<b>60.8</b>')}<span>Weight (kg)</span></div>
+          </div>
+          <div class="clip" style="aspect-ratio:16/8">${canView('video') ? `<canvas width="640" height="320" data-static="1"></canvas><span class="dur">Highlights · 3 clips</span>` : '<div class="locked" style="height:100%"><b>Highlights hidden</b></div>'}</div>
+        </article>
+        ${v === 'me' ? `
+        <section class="card">
+          <div class="setting"><div><b>Fight Camp mode</b><small>Hide all training and stats from everyone outside your coaches until fight night.</small></div><button class="switch" role="switch" aria-checked="${S.fightCamp}" aria-label="Fight Camp mode" data-act="camp"></button></div>
+        </section>
+        <span class="label">Who can see</span>
+        <section class="card">
+          <div class="setting"><div><b>Training log</b><small>Sessions, rounds, roadwork</small></div><select class="select" id="pv-training" data-privacy="training">${opt('training')}</select></div>
+          <div class="setting"><div><b>Stats &amp; wearable data</b><small>Steps, activity, trends</small></div><select class="select" id="pv-stats" data-privacy="stats">${opt('stats')}</select></div>
+          <div class="setting"><div><b>Weight</b><small>Weigh-ins and cut progress</small></div><select class="select" id="pv-weight" data-privacy="weight">${opt('weight')}</select></div>
+          <div class="setting"><div><b>Highlight videos</b><small>Clips you pin to your card</small></div><select class="select" id="pv-video" data-privacy="video">${opt('video')}</select></div>
+        </section>
+        <span class="label">Connected</span>
+        <section class="card">
+          <div class="setting"><div class="row"><span style="color:var(--gold)">${I.watch}</span><div><b>Ganance Heir</b><small>On your Citizen Eco-Drive · synced 2 min ago</small></div></div><span class="status s-good">Live</span></div>
+          <div class="setting"><div class="row"><span style="color:var(--red)">${I.heart}</span><div><b>Apple Health</b><small>Steps, distance, active energy</small></div></div><span class="status s-good">On</span></div>
+          <div class="setting"><div class="row"><span style="color:var(--dim)">${I.flame}</span><div><b>Konquer</b><small>Import bouts and registrations</small></div></div><button class="btn sm ghost" data-act="toastOnly" data-msg="Konquer link requested (demo)">Connect</button></div>
+        </section>` : ''}
+      </div>`;
+  }
+
+  function viewGym() {
+    return `
+      ${topbar('Gym', 'COACH DRE')}
+      <div class="pad">
+        <article class="fcard"><div class="nick" style="font-size:38px">Lakeshore<br>Boxing Club</div><div class="real">Oakland, CA · Est. 2009 · USA Boxing registered club</div>
+          <div class="record"><div><b>5</b><span>Fighters</span></div><div><b>2</b><span>Coaches</span></div><div><b>38</b><span>Wins 2026</span></div></div></article>
+        <section class="card">
+          <div class="setting"><div><b>Invite a fighter</b><small>Share this code; they join your team on sign-up.</small></div><span style="font-family:var(--mono);font-size:15px;letter-spacing:.1em">LKSR-417</span></div>
+          <div class="setting"><div><b>Approve public posts</b><small>Youth fighters' public posts wait for a coach.</small></div><button class="switch" role="switch" aria-checked="true" aria-label="Approve public posts"></button></div>
+          <div class="setting"><div><b>Bulk devices</b><small>Order Heir sensors for the team at club pricing.</small></div><button class="btn sm ghost" data-act="toastOnly" data-msg="Quote requested for 5 Heir sensors (demo)">Get quote</button></div>
+        </section>
+      </div>`;
+  }
+
+  function viewPromoterProfile() {
+    return `
+      ${topbar('Profile', 'EASTBAY PROMOTIONS')}
+      <div class="pad">
+        <article class="fcard"><div class="row">${av('tanya', 56)}<div><div class="nick" style="font-size:34px">Tanya Ruiz</div><div class="real">Promoter · Verified · Bay Area</div></div></div>
+        <div class="record"><div><b>6</b><span>Shows 2026</span></div><div><b>${S.shortlist.length}</b><span>Shortlist</span></div></div></article>
+        <section class="card"><div class="setting"><div><b>Contact goes through coaches</b><small>For youth fighters, requests route to the head coach, never the fighter directly.</small></div><span class="status s-info">Policy</span></div></section>
+      </div>`;
+  }
+
+  function viewDiscover(onlyShort) {
+    const filters = ['All', '50 kg', '54 kg', '60 kg', '67 kg', '71 kg'];
+    let list = prospects.filter(p => S.discFilter === 'All' || p.wc === S.discFilter);
+    if (onlyShort) list = prospects.filter(p => S.shortlist.includes(p.id));
+    return `
+      ${topbar(onlyShort ? 'Shortlist' : 'Discover', onlyShort ? `${list.length} FIGHTERS` : 'PUBLIC FIGHTER CARDS')}
+      <div class="pad">
+        ${onlyShort ? '' : `<input class="input" id="disc-q" placeholder="Search name, gym or city" aria-label="Search fighters"><div class="chips">${filters.map(f => `<button class="chip" data-act="discFilter" data-v="${f}" aria-pressed="${S.discFilter === f}">${f}</button>`).join('')}</div>`}
+        ${list.length ? list.map(p => { const pp = people[p.id]; const on = S.shortlist.includes(p.id); return `<article class="card disc">
+          <div class="row">${av(p.id, 46)}<div class="grow"><div style="font-weight:700" class="trunc">${pp.name} <span class="muted" style="font-weight:500">“${pp.nick}”</span></div><div class="muted" style="font-size:12.5px">${p.gym} · ${p.region} · Age ${p.age}</div></div><button class="star ${on ? 'on' : ''}" data-act="star" data-id="${p.id}" aria-label="${on ? 'Remove from' : 'Add to'} shortlist" aria-pressed="${on}">${on ? I.star : I.starO}</button></div>
+          <div class="kv"><div><b>${p.rec}</b><span>Record</span></div><div><b>${p.ko}</b><span>RSC wins</span></div><div><b>${p.wc}</b><span>Division</span></div></div>
+          ${p.camp ? `<div class="camp-banner"><span style="width:20px;color:var(--red)">${I.lock}</span><span>In fight camp · training hidden until Nov 8</span></div>` : `<div class="row" style="flex-wrap:wrap;gap:6px">${p.tags.map(t => `<span class="vis">${t}</span>`).join('')}<span class="vis" style="color:var(--green)">Trained 5× this week</span></div>`}
+          <button class="btn sm ghost" style="width:100%" data-act="contact" data-id="${p.id}">Request contact via coach</button>
+        </article>`; }).join('') : `<div class="empty">${onlyShort ? 'Star fighters in Discover to keep them here.' : 'No public fighters in this division yet.'}</div>`}
+      </div>`;
+  }
+
+  const views = { feed: viewFeed, train: viewTrain, stats: viewStats, team: viewTeam, events: viewEvents, me: viewProfile, discover: () => viewDiscover(false), shortlist: () => viewDiscover(true) };
+
+  /* ---------------- render ---------------- */
+  function render(keepScroll) {
+    const view = $('#view');
+    const st = view.scrollTop;
+    view.innerHTML = views[S.tab]();
+    if (keepScroll) view.scrollTop = st; else view.scrollTop = 0;
+    if (S.tab === 'feed') viewFeed.rendered = true;
+    $('#tabbar').innerHTML = tabsFor[S.role].map(([k, label, ico]) => `<button class="tab" data-tab="${k}" aria-current="${S.tab === k ? 'page' : 'false'}"><span class="tab-ico">${ico}</span>${label}</button>`).join('');
+    document.querySelectorAll('.role').forEach(b => b.setAttribute('aria-pressed', b.dataset.role === S.role));
+    document.querySelectorAll('.clip canvas').forEach(c => drawClipFrame(c, 0));
+  }
+
+  /* ---------------- clip (canvas silhouette) ---------------- */
+  function drawClipFrame(c, t) {
+    const x = c.getContext('2d'), W = c.width, H = c.height;
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2A2236'); g.addColorStop(1, '#0E0B14');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    // ring ropes
+    x.strokeStyle = 'rgba(229,72,62,.55)'; x.lineWidth = 6;
+    [.45, .58, .71].forEach(r => { x.beginPath(); x.moveTo(0, H * r); x.lineTo(W, H * r - 20); x.stroke(); });
+    // overhead light
+    const lg = x.createRadialGradient(W * .5, 0, 10, W * .5, 0, H); lg.addColorStop(0, 'rgba(255,240,210,.35)'); lg.addColorStop(1, 'rgba(255,240,210,0)');
+    x.fillStyle = lg; x.fillRect(0, 0, W, H);
+    // boxer silhouette
+    const bob = Math.sin(t * 6) * 6, punch = Math.max(0, Math.sin(t * 9)) * 70;
+    const cx = W * .45, base = H * .92;
+    x.fillStyle = '#05050A';
+    x.beginPath(); x.ellipse(cx, base - 205 + bob, 34, 40, 0, 0, 7); x.fill(); // head
+    x.beginPath(); x.moveTo(cx - 60, base - 160 + bob); x.lineTo(cx + 55, base - 160 + bob); x.lineTo(cx + 40, base - 60); x.lineTo(cx - 45, base - 60); x.closePath(); x.fill();
+    x.fillRect(cx - 45, base - 70, 34, 70); x.fillRect(cx + 10, base - 70, 34, 70);
+    x.lineCap = 'round'; x.strokeStyle = '#05050A'; x.lineWidth = 26;
+    x.beginPath(); x.moveTo(cx + 40, base - 150 + bob); x.lineTo(cx + 95 + punch, base - 190 + bob); x.stroke();
+    x.beginPath(); x.moveTo(cx - 40, base - 150 + bob); x.lineTo(cx + 20, base - 205 + bob); x.stroke();
+    x.fillStyle = '#C7332B';
+    x.beginPath(); x.arc(cx + 105 + punch, base - 192 + bob, 24, 0, 7); x.fill();
+    x.beginPath(); x.arc(cx + 30, base - 210 + bob, 24, 0, 7); x.fill();
+  }
+  let clipRAF = null;
+  function playClip(id) {
+    const wrap = document.querySelector(`.clip[data-clip="${id}"]`); if (!wrap) return;
+    const c = wrap.querySelector('canvas'), bar = wrap.querySelector('.bar');
+    wrap.classList.add('playing'); const start = performance.now(), len = 6000;
+    cancelAnimationFrame(clipRAF);
+    const loop = now => {
+      const p = Math.min(1, (now - start) / len);
+      if (!reduceMotion) drawClipFrame(c, (now - start) / 1000);
+      bar.style.transform = ''; bar.style.width = (p * 100) + '%';
+      if (p < 1 && document.body.contains(c)) clipRAF = requestAnimationFrame(loop);
+      else { wrap.classList.remove('playing'); bar.style.width = 0; drawClipFrame(c, 0); }
+    };
+    clipRAF = requestAnimationFrame(loop);
+  }
+
+  /* ---------------- sheet ---------------- */
+  const sheet = $('#sheet'), scrim = $('#scrim');
+  function openSheet(html, label) {
+    $('#sheetBody').innerHTML = html;
+    sheet.setAttribute('aria-label', label || 'Details');
+    sheet.style.transform = '';
+    sheet.classList.add('open'); scrim.classList.add('open');
+    setTimeout(() => { const f = sheet.querySelector('[autofocus]'); if (f) f.focus({ preventScroll: true }); }, 380);
+  }
+  function closeSheet() { sheet.classList.remove('open'); scrim.classList.remove('open'); sheet.style.transform = ''; }
+  scrim.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (sheet.classList.contains('open')) closeSheet(); } });
+
+  // drag-to-dismiss with velocity (Emil: flick > 0.11 px/ms dismisses), damping when dragging up
+  (() => {
+    let startY = 0, startT = 0, dy = 0, dragging = false;
+    const down = e => { if (dragging) return; dragging = true; startY = e.clientY; startT = performance.now(); dy = 0; sheet.classList.add('dragging'); $('#grabber').setPointerCapture(e.pointerId); };
+    const move = e => { if (!dragging) return; dy = e.clientY - startY; const t = dy < 0 ? -Math.sqrt(-dy) * 2 : dy; sheet.style.transform = `translateY(${t}px)`; };
+    const up = () => { if (!dragging) return; dragging = false; sheet.classList.remove('dragging'); const v = dy / (performance.now() - startT); if (dy > 120 || v > 0.11) closeSheet(); else sheet.style.transform = ''; };
+    const g = $('#grabber'); g.addEventListener('pointerdown', down); g.addEventListener('pointermove', move); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+  })();
+
+  function composeSheet(prefill) {
+    return `<h3>New post</h3>
+      <textarea id="compose-text" rows="4" placeholder="What did you work on today?" autofocus>${prefill || ''}</textarea>
+      <div><div class="label" style="margin-bottom:8px">Who sees this</div>
+      <div class="seg" role="group" aria-label="Visibility" id="visSeg"><span class="pill" style="width:calc(33.33% - 2px)"></span><button data-act="vis" data-v="team" aria-pressed="true">Team</button><button data-act="vis" data-v="coaches" aria-pressed="false">Coaches</button><button data-act="vis" data-v="public" aria-pressed="false">Public</button></div>
+      <div class="muted" id="visHelp" style="font-size:12.5px;margin-top:8px">Everyone at Lakeshore BC.</div></div>
+      ${S.role === 'fighter' ? `<label class="setting card" style="padding:12px"><div><b>Attach today's session</b><small>13 rounds · 4.0 mi · 14.2k steps</small></div><input type="checkbox" id="attach" checked style="width:20px;height:20px;accent-color:#E5483E"></label>` : ''}
+      <button class="btn" data-act="publish">Post to Team</button>`;
+  }
+  const visHelp = { team: 'Everyone at Lakeshore BC.', coaches: 'Only your coaches. Good for weight check-ins and injuries.', public: S => S.role === 'fighter' ? 'Anyone, including promoters. Youth posts wait for coach approval.' : 'Anyone, including promoters.' };
+
+  function commentsSheet(p) {
+    return `<h3>Comments</h3>
+      <div id="commentList" style="display:grid;gap:14px">${p.comments.length ? p.comments.map(c => `<div class="comment">${av(c.who)}<div><b>${people[c.who].name}</b><div>${c.text}</div></div></div>`).join('') : '<div class="muted">Be the first to show some love.</div>'}</div>
+      <form id="commentForm" class="row"><input class="input grow" id="comment-input" placeholder="Add a comment" aria-label="Comment" autocomplete="off"><button class="btn sm" type="submit">Send</button></form>
+      <div class="muted" style="font-size:12px">Comments are moderated for positivity. Coaches can hide any comment on a youth fighter's post.</div>`;
+  }
+
+  function eventSheet(e, step = 0) {
+    const reg = S.registered.includes(e.id);
+    if (S.role === 'promoter') {
+      return `<h3>${e.name}</h3><div class="muted">${e.where} · ${e.mon} ${e.day}</div>
+        <div class="tiles"><div class="card tile"><small>Registered</small><b>${e.reg}</b></div><div class="card tile"><small>Bouts matched</small><b>${Math.round(e.reg * .38)}</b></div></div>
+        <div class="checks"><div><span>Bout sheet</span><span class="ok">Auto-generated</span></div><div><span>Officials assigned</span><span class="ok">6 of 6</span></div><div><span>Ringside physician</span><span class="ok">Confirmed</span></div></div>
+        <button class="btn blue" data-act="toastOnly" data-msg="Bout sheet exported (demo)">Export bout sheet</button>`;
+    }
+    if (S.role === 'coach') {
+      return `<h3>${e.name}</h3><div class="muted">${e.where} · ${e.mon} ${e.day} · Entry ${e.fee}</div>
+        <span class="label">Enter fighters</span>
+        <section class="card">${team.map((t, i) => `<label class="setting"><div class="row">${av(t.id, 32)}<div><b>${people[t.id].name}</b><small>${people[t.id].wc} · ${t.weight} kg</small></div></div><input type="checkbox" id="enter-${t.id}" ${i < 3 ? 'checked' : ''} style="width:20px;height:20px;accent-color:#E5483E"></label>`).join('')}</section>
+        <button class="btn" data-act="coachRegister" data-id="${e.id}">Register selected fighters</button>`;
+    }
+    if (reg && step === 0) step = 3;
+    const steps = `<div class="steps">${[0, 1, 2].map(i => `<i class="${i <= Math.min(step, 2) ? 'on' : ''}"></i>`).join('')}</div>`;
+    if (step === 0) return `${steps}<h3>${e.name}</h3><div class="muted">${e.where} · ${e.mon} ${e.day} · Entry ${e.fee}</div>
+      <span class="label">Your entry</span>
+      <div class="checks"><div><span>Division</span><b>60 kg · Youth (17–18)</b></div><div><span>Declared weight</span><b class="num">60.8 kg</b></div><div><span>Bouts on record</span><b class="num">17</b></div></div>
+      <button class="btn" data-act="regStep" data-id="${e.id}" data-step="1">Continue</button>`;
+    if (step === 1) return `${steps}<h3>Documents</h3><div class="muted">Checked against your USA Boxing membership.</div>
+      <div class="checks"><div><span>2026 USA Boxing membership</span><span class="ok">Valid</span></div><div><span>Annual physical</span><span class="ok">Uploaded Aug 2</span></div><div><span>Proof of age</span><span class="ok">Verified</span></div><div><span>Coach approval</span><span class="ok">Coach Dre</span></div></div>
+      <button class="btn" data-act="regStep" data-id="${e.id}" data-step="2">Find my matches</button>`;
+    if (step === 2) return `${steps}<h3>Suggested match</h3><div class="muted">Matched by division, age and experience.</div>
+      <article class="card match">
+        <div class="vs"><div class="corner red"><b>Marcus Reyes</b><span>17 · 17 bouts · Lakeshore</span></div><i>VS</i><div class="corner blue"><b>D. Okafor</b><span>17 · 15 bouts · Richmond PAL</span></div></div>
+        <div class="rules"><div><span>Same division (60 kg)</span><span class="ok">Pass</span></div><div><span>Age gap within limit</span><span class="ok">0 yrs</span></div><div><span>Experience gap within limit</span><span class="ok">2 bouts</span></div></div>
+      </article>
+      <div class="row" style="gap:8px"><button class="btn ghost" data-act="regStep" data-id="${e.id}" data-step="2" data-alt="1">Show another</button><button class="btn" data-act="regStep" data-id="${e.id}" data-step="3">Accept match</button></div>
+      <div class="muted" style="font-size:12px">Final matches are confirmed by the event's matchmaker. Rules are illustrative.</div>`;
+    return `<h3>You're in</h3><div class="muted">${e.name} · ${e.mon} ${e.day}</div>
+      <div class="vs"><div class="corner red"><b>Marcus Reyes</b><span>Red corner</span></div><i>VS</i><div class="corner blue"><b>D. Okafor</b><span>Blue corner</span></div></div>
+      <div class="checks"><div><span>Weigh-in</span><b>${e.mon} ${e.day}, 7:00 am</b></div><div><span>Status</span><span class="ok">Awaiting opponent's coach</span></div></div>
+      <button class="btn ghost" data-act="close">Done</button>`;
+  }
+
+  function fighterSheet(id) {
+    const t = team.find(x => x.id === id), p = people[id];
+    return `<div class="row">${av(id, 56)}<div><h3>${p.name}</h3><div class="muted">“${p.nick}” · ${p.wc}</div></div></div>
+      <div class="kv"><div><b>${t.comp}%</b><span>Compliance</span></div><div><b class="num">${t.weight}</b><span>Weight kg</span></div><div><b>${id === 'jaylen' ? '3d' : '0d'}</b><span>Since check-in</span></div></div>
+      <div class="checks"><div><span>Coach note</span><span>${t.note}</span></div></div>
+      <textarea id="coach-note" rows="3" placeholder="Send ${p.name.split(' ')[0]} a private note"></textarea>
+      <button class="btn" data-act="sendNote" data-id="${id}">Send note</button>`;
+  }
+
+  function assignSheet() {
+    return `<h3>New plan</h3>
+      <input class="input" id="plan-name" value="Body work + conditioning" aria-label="Plan name">
+      <div class="label">Rounds</div>
+      <section class="card" id="planRounds" style="padding:2px 14px">${[['Shadowbox', '3:00'], ['Heavy bag · body', '3:00'], ['Heavy bag · body', '3:00'], ['Partner drills', '3:00']].map((r, i) => `<div class="rnd"><span class="n">${String(i + 1).padStart(2, '0')}</span><span>${r[0]}</span><span class="tm">${r[1]}</span></div>`).join('')}</section>
+      <button class="btn ghost sm" data-act="addRound" style="justify-self:start">${I.plus} Add round</button>
+      <div class="label">Assign to</div>
+      <div class="chips"><button class="chip" aria-pressed="true">Whole team</button><button class="chip" aria-pressed="false">Fight camp group</button><button class="chip" aria-pressed="false">Beginners</button></div>
+      <button class="btn" data-act="doAssign">Assign to 5 fighters</button>`;
+  }
+
+  /* ---------------- live session ---------------- */
+  const callouts = ['Jab! Jab!', 'Double jab, cross', '1-2, slip, 2', 'Hands up!', 'Move your head', 'Turn it over!', 'Body, body, head', 'Breathe. Stay loose', 'Last 30! Let\'s go'];
+  let sess = null;
+  function startSession() {
+    tick('session');
+    sess = { round: 1, total: 6, phase: 'work', left: 180, speed: 1, paused: false, steps: 0, kcal: 0, cad: 0, t0: performance.now(), callIdx: 0, last: performance.now(), acc: 0, totalSec: 0 };
+    const el = $('#session');
+    el.innerHTML = `
+      <div class="sess-top"><span class="phase" id="sPhase">Work</span><span class="devicechip"><span class="live-dot"></span>Ganance Heir · live</span><button class="btn sm ghost" data-act="speed" id="sSpeed" aria-label="Demo speed">1×</button></div>
+      <div><div class="clock" id="sClock">3:00</div><div class="clock-sub" id="sSub">Round 1 of 6 · Jump rope</div><div class="roundpips" id="sPips"></div></div>
+      <div class="arcade"><canvas id="arcade" width="160" height="110"></canvas><div class="bubble" id="sBubble">Let's work, champ!</div></div>
+      <div style="display:grid;gap:12px">
+        <div class="livestats"><div><b id="sSteps">0</b><span>steps</span></div><div><b id="sCad">0</b><span>cadence spm</span></div><div><b id="sKcal">0</b><span>active kcal</span></div></div>
+        <div class="sess-ctrl"><button class="btn ghost" data-act="skip">Skip</button><button class="btn" data-act="pause" id="sPause">${I.pause} Pause</button><button class="btn ghost" data-act="endSession">End</button></div>
+      </div>`;
+    el.dataset.phase = 'work';
+    requestAnimationFrame(() => el.classList.add('open'));
+    updatePips(); sessLoop();
+  }
+  function updatePips() { $('#sPips').innerHTML = Array.from({ length: sess.total }, (_, i) => `<i class="${i + 1 < sess.round ? 'done' : i + 1 === sess.round ? 'now' : ''}"></i>`).join(''); }
+  function fmt(s) { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  function setBubble(text) { const b = $('#sBubble'); if (!b) return; b.classList.add('swap'); setTimeout(() => { b.textContent = text; b.classList.remove('swap'); }, 180); }
+  function sessLoop() {
+    if (!sess) return;
+    const now = performance.now(); const dt = (now - sess.last) / 1000; sess.last = now;
+    if (!sess.paused) {
+      const d = dt * sess.speed; sess.left -= d; sess.totalSec += d; sess.acc += d;
+      if (sess.phase === 'work') {
+        sess.cad = Math.round(150 + Math.sin(now / 900) * 12 + Math.random() * 6);
+        sess.steps += sess.cad / 60 * d; sess.kcal += 0.17 * d;
+        if (sess.acc > 8) { sess.acc = 0; sess.callIdx = (sess.callIdx + 1) % callouts.length; setBubble(sess.left < 32 ? callouts[8] : callouts[sess.callIdx % 8]); }
+      } else { sess.cad = Math.round(60 + Math.random() * 8); sess.steps += 1 * d; sess.kcal += 0.04 * d; }
+      if (sess.left <= 0) {
+        if (sess.phase === 'work') {
+          if (sess.round >= sess.total) return endSession();
+          sess.phase = 'rest'; sess.left = 60; setBubble('Breathe. Water. Good round.');
+        } else { sess.round++; sess.phase = 'work'; sess.left = 180; setBubble(`Round ${sess.round}. ${plan[sess.round - 1][0]}!`); updatePips(); }
+        $('#session').dataset.phase = sess.phase; $('#sPhase').textContent = sess.phase === 'work' ? 'Work' : 'Rest';
+      }
+    }
+    $('#sClock').textContent = fmt(sess.left);
+    $('#sSub').textContent = sess.phase === 'work' ? `Round ${sess.round} of ${sess.total} · ${plan[sess.round - 1][0]}` : `Rest · next: ${plan[Math.min(sess.round, sess.total - 1)][0]}`;
+    $('#sSteps').textContent = Math.round(sess.steps).toLocaleString();
+    $('#sCad').textContent = sess.cad;
+    $('#sKcal').textContent = Math.round(sess.kcal);
+    drawArcade(now);
+    sess.raf = requestAnimationFrame(sessLoop);
+  }
+
+  // Punch-Out!!-style pixel strip: coach jogs alongside the fighter
+  const PAL = { R: '#E5483E', S: '#C68B5E', K: '#14101C', W: '#EDEAE3', G: '#3A4560', B: '#2D62C4', H: '#B8231C', Y: '#E9B949', D: '#8A5A3A' };
+  const coachA = ['....RRRR....', '...RRRRRRR..', '...SSSSSS...', '...SKSSKS...', '...SSSSSS...', '....SSSS....', '..WWGGGGWW..', '..SWGGGGWS..', '..S.GYGG.S..', '....GGGG....', '....BBBB....', '...BB..BB...', '..BB....BB..', '..KK....KK..'];
+  const coachB = ['....RRRR....', '...RRRRRRR..', '...SSSSSS...', '...SKSSKS...', '...SSSSSS...', '....SSSS....', '..WWGGGGWW..', '..SWGGGGWS..', '..S.GYGG.S..', '....GGGG....', '....BBBB....', '....BBBB....', '....BB.BB...', '....KK.KK...'];
+  const fightA = ['....HHHH....', '...HHHHHH...', '...HDDDDH...', '...DKDDKD...', '....DDDD....', '.RR.DDDD.RR.', 'RRRRDDDDRRRR', '.RRDDDDDDRR.', '....DDDD....', '....RRRR....', '....RRRR....', '...DD..DD...', '..DD....DD..', '..KK....KK..'];
+  const fightB = ['....HHHH....', '...HHHHHH...', '...HDDDDH...', '...DKDDKD...', '....DDDD....', '....DDDD.RR.', '.RRDDDDDRRRR', 'RRRRDDDDDRR.', '.RR.DDDD....', '....RRRR....', '....RRRR....', '....DDDD....', '....DD.DD...', '....KK.KK...'];
+  function sprite(x, map, ox, oy, s) { map.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const c = row[i]; if (c !== '.') { x.fillStyle = PAL[c]; x.fillRect(ox + i * s, oy + j * s, s, s); } } }); }
+  function drawArcade(now) {
+    const c = $('#arcade'); if (!c) return; const x = c.getContext('2d'); const W = c.width, H = c.height;
+    const t = reduceMotion || (sess && sess.paused) ? 0 : now / 1000;
+    const rest = sess && sess.phase === 'rest';
+    x.fillStyle = rest ? '#141E36' : '#1A1430'; x.fillRect(0, 0, W, H);
+    // skyline
+    x.fillStyle = rest ? '#1D2A48' : '#2A2048';
+    for (let i = 0; i < 12; i++) { const bx = ((i * 22 - t * 8) % (W + 22) + W + 22) % (W + 22) - 22; const bh = 18 + (i * 37 % 26); x.fillRect(bx, H - 40 - bh, 18, bh); }
+    x.fillStyle = '#E9B949'; for (let i = 0; i < 12; i++) { const bx = ((i * 22 - t * 8) % (W + 22) + W + 22) % (W + 22) - 22; if (i % 3 === 0) x.fillRect(bx + 5, H - 52, 2, 2); }
+    // road
+    x.fillStyle = '#0D0A16'; x.fillRect(0, H - 40, W, 40);
+    x.fillStyle = '#3A4560'; for (let i = 0; i < 10; i++) { const dx = ((i * 24 - t * 60) % (W + 24) + W + 24) % (W + 24) - 24; x.fillRect(dx, H - 18, 12, 2); }
+    const f = Math.floor(t * (rest ? 3 : 8)) % 2;
+    const s = 2;
+    sprite(x, f ? coachB : coachA, 34, H - 40 - 14 * s + 2 + (f ? 1 : 0), s);
+    sprite(x, f ? fightB : fightA, 86, H - 40 - 14 * s + 2 + (f ? 0 : 1), s);
+  }
+  function endSession() {
+    if (!sess) return;
+    cancelAnimationFrame(sess.raf);
+    const done = sess.round - (sess.phase === 'work' && sess.left > 0 ? 1 : 0);
+    const r = { rounds: Math.max(done, 0), mins: Math.round(sess.totalSec / 60), steps: Math.round(sess.steps), kcal: Math.round(sess.kcal) };
+    sess = null;
+    $('#session').classList.remove('open');
+    setTimeout(() => openSheet(`<h3>Session done</h3><div class="muted">Bag &amp; Mitts · logged to your training</div>
+      <div class="statline"><div><b>${r.rounds}</b><span>rounds</span></div><div><b>${r.mins}</b><span>min</span></div><div><b>${r.steps.toLocaleString()}</b><span>steps</span></div><div><b>${r.kcal}</b><span>kcal</span></div></div>
+      <div class="checks"><div><span>Coach Dre</span><span class="ok">Notified</span></div><div><span>Streak</span><b>10 days</b></div></div>
+      <button class="btn" data-act="shareSession" data-r='${JSON.stringify(r)}'>Share to Corner</button><button class="btn ghost" data-act="close">Keep it private</button>`, 'Session summary'), 300);
+  }
+
+  /* ---------------- events ---------------- */
+  let composeVis = 'team', pendingAttach = null, altMatch = false;
+  document.addEventListener('click', e => {
+    const roleBtn = e.target.closest('.role');
+    if (roleBtn) { S.role = roleBtn.dataset.role; S.tab = 'feed'; S.feedFilter = 'all'; viewFeed.rendered = false; save(); render(); return; }
+    const tabBtn = e.target.closest('[data-tab]');
+    if (tabBtn) { S.tab = tabBtn.dataset.tab; render(); return; }
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    const act = a.dataset.act, id = a.dataset.id, v = a.dataset.v;
+    const post = id && S.posts.find(p => p.id === id);
+    switch (act) {
+      case 'filter': S.feedFilter = v; render(true); break;
+      case 'props': post.mine = !post.mine; tick('props'); render(true); break;
+      case 'comments': openSheet(commentsSheet(post), 'Comments'); $('#commentForm').dataset.id = id; break;
+      case 'share': toast('Link copied (demo)'); break;
+      case 'play': playClip(id); break;
+      case 'notifs': openSheet(`<h3>Activity</h3><div style="display:grid;gap:14px">${[['dre', 'assigned <b>Bag &amp; Mitts</b> for today'], ['aaliyah', 'gave props to your roadwork'], ['tanya', 'viewed your fighter card'], ['dre', 'approved your public highlight']].map(n => `<div class="comment">${av(n[0])}<div><b>${people[n[0]].name}</b> ${n[1]}<div class="muted" style="font-size:12px">today</div></div></div>`).join('')}</div>`, 'Activity'); break;
+      case 'compose': composeVis = 'team'; pendingAttach = null; openSheet(composeSheet(), 'New post'); break;
+      case 'vis': {
+        composeVis = v; const seg = $('#visSeg'); const idx = ['team', 'coaches', 'public'].indexOf(v);
+        seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+        seg.querySelector('.pill').style.transform = `translateX(${idx * 100}%)`;
+        const h = visHelp[v]; $('#visHelp').textContent = typeof h === 'function' ? h(S) : h;
+        sheet.querySelector('[data-act="publish"]').textContent = `Post to ${v === 'coaches' ? 'Coaches' : v === 'public' ? 'Public' : 'Team'}`; break;
+      }
+      case 'publish': {
+        const text = $('#compose-text').value.trim() || 'Put the work in today. 💪';
+        const attach = $('#attach') ? $('#attach').checked : false;
+        const st = pendingAttach || { rounds: 13, steps: 14200, kcal: 612, mins: 41 };
+        const p = { id: 'u' + Date.now(), who: roleUser[S.role], when: 'now', vis: S.fightCamp && S.role === 'fighter' ? 'camp' : composeVis, type: attach ? 'workout' : 'shout', text, props: 0, mine: false, comments: [] };
+        if (attach) p.stats = [[String(st.rounds), 'rounds'], [String(st.mins), 'min'], [st.steps >= 1000 ? (st.steps / 1000).toFixed(1) + 'k' : String(st.steps), 'steps'], [String(st.kcal), 'kcal']];
+        S.posts.unshift(p); tick('post'); closeSheet(); S.tab = 'feed'; render();
+        toast(p.vis === 'camp' ? 'Posted. Hidden outside your team while in fight camp.' : composeVis === 'public' && S.role === 'fighter' ? 'Sent to Coach Dre for approval' : `Posted to ${visName[composeVis]}`); break;
+      }
+      case 'startSession': startSession(); break;
+      case 'pause': sess.paused = !sess.paused; a.innerHTML = sess.paused ? `${I.play} Resume` : `${I.pause} Pause`; break;
+      case 'skip': sess.left = 0; break;
+      case 'speed': sess.speed = sess.speed === 1 ? 10 : sess.speed === 10 ? 30 : 1; a.textContent = sess.speed + '×'; break;
+      case 'endSession': endSession(); break;
+      case 'shareSession': { pendingAttach = JSON.parse(a.dataset.r); composeVis = S.privacy.training === 'public' ? 'public' : 'team'; openSheet(composeSheet(`${pendingAttach.rounds} rounds in the books. ${pendingAttach.steps.toLocaleString()} steps on the Heir.`), 'New post'); break; }
+      case 'close': closeSheet(); break;
+      case 'range': S.statsRange = v; render(true); break;
+      case 'viewas': S.viewAs = v; if (v === 'public') tick('viewas'); render(true); break;
+      case 'camp': S.fightCamp = !S.fightCamp; if (S.fightCamp) tick('camp'); save(); render(true); toast(S.fightCamp ? 'Fight Camp on. Training hidden until Nov 8.' : 'Fight Camp off. Your usual settings are back.'); break;
+      case 'event': { const ev = events.find(x => x.id === id); altMatch = false; openSheet(eventSheet(ev), ev.name); break; }
+      case 'regStep': {
+        const ev = events.find(x => x.id === id), step = +a.dataset.step;
+        if (step === 3 && !S.registered.includes(id)) { S.registered.push(id); tick('register'); save(); render(true); toast('Registered. Match sent to the opposing coach.'); }
+        let html = eventSheet(ev, step);
+        if (a.dataset.alt) { altMatch = !altMatch; if (altMatch) html = html.replace('D. Okafor', 'L. Martinez').replace('17 · 15 bouts · Richmond PAL', '18 · 19 bouts · Hayward BC').replace('0 yrs', '1 yr'); }
+        $('#sheetBody').innerHTML = html; break;
+      }
+      case 'coachRegister': { if (!S.registered.includes(id)) S.registered.push(id); save(); closeSheet(); render(true); const n = sheet.querySelectorAll('input[type=checkbox]:checked').length; toast(`${n || 3} fighters registered`); break; }
+      case 'fighter': openSheet(fighterSheet(id), people[id].name); break;
+      case 'sendNote': closeSheet(); toast(`Note sent to ${people[id].name.split(' ')[0]}`); break;
+      case 'assign': openSheet(assignSheet(), 'New plan'); break;
+      case 'addRound': { const list = $('#planRounds'); const n = list.children.length + 1; list.insertAdjacentHTML('beforeend', `<div class="rnd enter"><span class="n">${String(n).padStart(2, '0')}</span><span>Speed bag</span><span class="tm">3:00</span></div>`); break; }
+      case 'doAssign': tick('assign'); closeSheet(); toast('Assigned to 5 fighters. They\'ll get it at 5:30am.'); break;
+      case 'discFilter': S.discFilter = v; render(true); break;
+      case 'star': { const i = S.shortlist.indexOf(id); if (i > -1) S.shortlist.splice(i, 1); else { S.shortlist.push(id); tick('discover'); } save(); render(true); break; }
+      case 'contact': toast(`Request sent to Coach Dre about ${people[id].name.split(' ')[0]}`); break;
+      case 'createEvent': openSheet(`<h3>New event</h3><input class="input" id="ev-name" value="Eastbay Winter Classic" aria-label="Event name"><input class="input" id="ev-date" value="Dec 13, 2026 · Oakland" aria-label="Date and place"><div class="checks"><div><span>Sanctioning</span><b>USA Boxing</b></div><div><span>Format</span><b>Single-day show</b></div><div><span>Matching rules</span><span class="ok">Applied automatically</span></div></div><button class="btn" data-act="close">Publish event</button>`, 'New event'); break;
+      case 'toastOnly': toast(a.dataset.msg); break;
+    }
+  });
+  document.addEventListener('change', e => {
+    const k = e.target.dataset.privacy;
+    if (k) { S.privacy[k] = e.target.value; save(); toast(`${{ training: 'Training log', stats: 'Stats', weight: 'Weight', video: 'Highlights' }[k]}: ${visName[e.target.value]}`); }
+  });
+  document.addEventListener('submit', e => {
+    if (e.target.id !== 'commentForm') return;
+    e.preventDefault();
+    const input = $('#comment-input'); const text = input.value.trim(); if (!text) return;
+    const post = S.posts.find(p => p.id === e.target.dataset.id);
+    post.comments.push({ who: roleUser[S.role], text });
+    $('#commentList').innerHTML = post.comments.map(c => `<div class="comment">${av(c.who)}<div><b>${people[c.who].name}</b><div>${c.text}</div></div></div>`).join('');
+    input.value = ''; render(true);
+  });
+  $('#resetBtn').addEventListener('click', () => { S = defaults(); save(); viewFeed.rendered = false; closeSheet(); if (sess) { cancelAnimationFrame(sess.raf); sess = null; $('#session').classList.remove('open'); } render(); renderTour(); toast('Demo reset'); });
+
+  const tickClock = () => { const d = new Date(); $('#clockNow').textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  tickClock(); setInterval(tickClock, 30000);
+  renderTour(); render();
+})();
+</script>
